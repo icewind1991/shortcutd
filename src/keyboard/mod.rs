@@ -27,26 +27,48 @@ pub enum Modifier {
 }
 
 impl Modifier {
-    pub fn is_modifier(&self, key: Key) -> bool {
+    pub fn as_mask(&self) -> u8 {
         match self {
-            Modifier::Alt => key == Key::KeyLeftAlt || key == Key::KeyRightAlt,
-            Modifier::LeftAlt => key == Key::KeyLeftAlt,
-            Modifier::RightAlt => key == Key::KeyRightAlt,
-            Modifier::Ctrl => key == Key::KeyLeftCtrl || key == Key::KeyRightCtrl,
-            Modifier::LeftCtrl => key == Key::KeyLeftCtrl,
-            Modifier::RightCtrl => key == Key::KeyRightCtrl,
-            Modifier::Meta => key == Key::KeyLeftMeta || key == Key::KeyRightMeta,
-            Modifier::LeftMeta => key == Key::KeyLeftMeta,
-            Modifier::RightMeta => key == Key::KeyRightMeta,
-            Modifier::Shift => key == Key::KeyLeftshift || key == Key::KeyRightshift,
-            Modifier::LeftShift => key == Key::KeyLeftshift,
-            Modifier::RightShift => key == Key::KeyRightshift,
+            Modifier::Alt => 0b00000011,
+            Modifier::LeftAlt => 0b00000001,
+            Modifier::RightAlt => 0b00000010,
+            Modifier::Ctrl => 0b00001100,
+            Modifier::LeftCtrl => 0b00000100,
+            Modifier::RightCtrl => 0b00001000,
+            Modifier::Meta => 0b00110000,
+            Modifier::LeftMeta => 0b00010000,
+            Modifier::RightMeta => 0b00100000,
+            Modifier::Shift => 0b11000000,
+            Modifier::LeftShift => 0b01000000,
+            Modifier::RightShift => 0b10000000,
+        }
+    }
+
+    pub fn mask_from_key(key: Key) -> u8 {
+        match key {
+            Key::KeyLeftAlt => 0b00000001,
+            Key::KeyRightAlt => 0b00000010,
+            Key::KeyLeftCtrl => 0b00000100,
+            Key::KeyRightCtrl => 0b00001000,
+            Key::KeyLeftMeta => 0b00010000,
+            Key::KeyRightMeta => 0b00100000,
+            Key::KeyLeftShift => 0b01000000,
+            Key::KeyRightShift => 0b10000000,
+            _ => 0,
         }
     }
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ModifierList(Vec<Modifier>);
+
+impl ModifierList {
+    pub fn as_mask(&self) -> u8 {
+        self.0
+            .iter()
+            .fold(0, |mask, modifier| mask | modifier.as_mask())
+    }
+}
 
 impl Display for ModifierList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -83,25 +105,18 @@ pub struct Shortcut {
     key: Key,
 }
 
-#[test]
-fn test_shortcut_format() {
-    assert_eq!(
-        "<Ctrl>-KeyP",
-        format!("{}", Shortcut::new(vec![Modifier::Ctrl], Key::KeyP))
-    );
+#[cfg(test)]
+mod tests {
+    use crate::keyboard::{Key, Modifier, Shortcut};
+    use test_case::test_case;
 
-    assert_eq!(
-        "<LeftCtrl><LeftAlt>-KeyLeft",
-        format!(
-            "{}",
-            Shortcut::new(vec![Modifier::LeftCtrl, Modifier::LeftAlt], Key::KeyLeft)
-        )
-    );
+    #[test_case("<Ctrl>-KeyP", Shortcut::new(vec ! [Modifier::Ctrl], Key::KeyP))]
+    #[test_case("<LeftCtrl><LeftAlt>-KeyLeft", Shortcut::new(vec ! [Modifier::LeftCtrl, Modifier::LeftAlt], Key::KeyLeft))]
+    fn shortcut_parse_display_test(s: &str, shortcut: Shortcut) {
+        assert_eq!(s, format!("{}", shortcut));
 
-    assert_eq!(
-        Shortcut::from_str("<LeftCtrl><LeftAlt>-KeyLeft").unwrap(),
-        Shortcut::new(vec![Modifier::LeftCtrl, Modifier::LeftAlt], Key::KeyLeft)
-    );
+        assert_eq!(shortcut, s.parse().unwrap());
+    }
 }
 
 impl Shortcut {
@@ -115,15 +130,42 @@ impl Shortcut {
 
 impl Shortcut {
     pub fn is_triggered(&self, active_keys: &HashSet<Key>) -> bool {
-        for modifier in &self.modifiers.0 {
-            if active_keys.iter().any(|key| modifier.is_modifier(*key)) {
-                break;
-            }
+        let desired_mask = self.modifiers.as_mask();
+        let pressed_mask = active_keys
+            .iter()
+            .fold(0, |mask, key| mask | Modifier::mask_from_key(*key));
 
-            return false;
-        }
+        let desired_presses = desired_mask & pressed_mask;
+        let modifiers_match = (desired_presses == pressed_mask)
+            && (desired_presses.count_ones() == self.modifiers.0.len() as u32);
 
-        active_keys.contains(&self.key)
+        modifiers_match && active_keys.contains(&self.key)
+    }
+}
+
+#[cfg(test)]
+mod triggered_tests {
+    use crate::keyboard::{Key, Modifier, Shortcut};
+    use std::collections::HashSet;
+    use test_case::test_case;
+
+    #[test_case("<Ctrl>-KeyP", & [] => false)]
+    #[test_case("<Ctrl>-KeyP", & [Key::KeyLeftCtrl, Key::KeyP] => true)]
+    #[test_case("<Ctrl>-KeyP", & [Key::KeyRightCtrl, Key::KeyP] => true)]
+    #[test_case("<LeftCtrl>-KeyP", & [Key::KeyLeftCtrl, Key::KeyP] => true)]
+    #[test_case("<LeftCtrl>-KeyP", & [Key::KeyRightCtrl, Key::KeyP] => false)]
+    #[test_case("<Ctrl>-KeyP", & [Key::KeyLeftCtrl, Key::KeyLeftAlt, Key::KeyP] => false)]
+    #[test_case("<LeftCtrl><LeftAlt>-KeyLeft", & [] => false)]
+    #[test_case("<LeftCtrl><LeftAlt>-KeyLeft", & [Key::KeyLeft] => false)]
+    #[test_case("<LeftCtrl><LeftAlt>-KeyLeft", & [Key::KeyLeftCtrl, Key::KeyLeft] => false)]
+    #[test_case("<LeftCtrl><LeftAlt>-KeyLeft", & [Key::KeyLeftCtrl, Key::KeyLeftAlt] => false)]
+    #[test_case("<LeftCtrl><LeftAlt>-KeyLeft", & [Key::KeyLeftCtrl, Key::KeyLeftAlt, Key::KeyRight] => false)]
+    #[test_case("<LeftCtrl><LeftAlt>-KeyLeft", & [Key::KeyLeftCtrl, Key::KeyLeftAlt, Key::KeyLeft] => true)]
+    #[test_case("<LeftCtrl><LeftAlt>-KeyLeft", & [Key::KeyLeftCtrl, Key::KeyRightAlt, Key::KeyLeft] => false)]
+    #[test_case("<Ctrl><Alt>-KeyLeft", & [Key::KeyLeftCtrl, Key::KeyRightAlt, Key::KeyLeft] => true)]
+    fn shortcut_triggered(s: &str, keys: &[Key]) -> bool {
+        let shortcut: Shortcut = s.parse().unwrap();
+        shortcut.is_triggered(&keys.into_iter().copied().collect())
     }
 }
 
