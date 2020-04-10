@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Robin Appelman <robin@icewind.nl>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+evdev = "0.10.1"
+main_error = "0.1.0"
+num_enum = "0.4.3"
