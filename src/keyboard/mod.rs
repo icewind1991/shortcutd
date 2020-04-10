@@ -126,6 +126,13 @@ impl Shortcut {
             key,
         }
     }
+
+    pub fn identifier(&self) -> String {
+        self.to_string()
+            .replace('<', "")
+            .replace('>', "")
+            .replace('-', "_")
+    }
 }
 
 impl Shortcut {
@@ -145,8 +152,8 @@ impl Shortcut {
 
 #[cfg(test)]
 mod triggered_tests {
-    use crate::keyboard::{Key, Modifier, Shortcut};
-    use std::collections::HashSet;
+    use crate::keyboard::{Key, Shortcut};
+    
     use test_case::test_case;
 
     #[test_case("<Ctrl>-KeyP", & [] => false)]
