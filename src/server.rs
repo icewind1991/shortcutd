@@ -62,7 +62,17 @@ impl<M: MethodType<D> + 'static, D: DataType + 'static> MutateTree<M, D> {
     }
 }
 
-fn main() -> Result<(), MainError> {
+fn main() {
+    loop {
+        std::panic::catch_unwind(|| {
+            run();
+        });
+
+        std::thread::sleep(Duration::from_secs(15));
+    }
+}
+
+fn run() -> Result<(), MainError> {
     let devices = glob::glob("/dev/input/by-id/*-kbd")?
         .map(|path| Ok(Device::open(&path.unwrap())?))
         .collect::<Result<Vec<Device>, MainError>>()?;
