@@ -22,7 +22,7 @@ contain at least one modifier key.
 ## Rust api
 
 ```rust
-use shortcutd_client::{Shortcut, ShortcutClient};
+use shortcutd::{Shortcut, ShortcutClient};
 use std::error::Error;
 use std::time::Duration;
 

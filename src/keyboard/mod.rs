@@ -153,7 +153,6 @@ impl Shortcut {
 #[cfg(test)]
 mod triggered_tests {
     use crate::keyboard::{Key, Shortcut};
-    
     use test_case::test_case;
 
     #[test_case("<Ctrl>-KeyP", & [] => false)]
@@ -187,7 +186,7 @@ impl ShortcutListener {
         }
     }
 
-    pub fn listen(&self, mut device: Device) -> Receiver<Shortcut> {
+    pub fn listen(&self, mut devices: Vec<Device>) -> Receiver<Shortcut> {
         let (tx, rx) = channel();
 
         let shortcuts = self.shortcuts.clone();
@@ -198,7 +197,11 @@ impl ShortcutListener {
             loop {
                 let mut got_event = false;
 
-                for ev in device.events().unwrap() {
+                let events = devices
+                    .iter_mut()
+                    .flat_map(|device| device.events().unwrap());
+
+                for ev in events {
                     got_event = true;
 
                     if let Ok(key) = Key::try_from(ev.code) {

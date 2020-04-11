@@ -63,19 +63,15 @@ impl<M: MethodType<D> + 'static, D: DataType + 'static> MutateTree<M, D> {
 }
 
 fn main() -> Result<(), MainError> {
-    let args: Vec<String> = std::env::args().collect();
-    let device = if args.len() > 1 {
-        Device::open(&args[1])?
-    } else {
-        eprintln!("Usage {} </dev/input/...>", args[0]);
-        return Ok(());
-    };
+    let devices = glob::glob("/dev/input/by-id/*-kbd")?
+        .map(|path| Ok(Device::open(&path.unwrap())?))
+        .collect::<Result<Vec<Device>, MainError>>()?;
 
     let listener = Arc::new(ShortcutListener::new());
 
     let mut signals: HashMap<String, Arc<Signal<()>>> = HashMap::default();
 
-    let rx = listener.listen(device);
+    let rx = listener.listen(devices);
 
     let mut connection = LocalConnection::new_system()?;
     connection.request_name(INTERFACE, false, true, false)?;

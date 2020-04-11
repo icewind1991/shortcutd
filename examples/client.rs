@@ -1,4 +1,4 @@
-use shortcutd_client::{Shortcut, ShortcutClient};
+use shortcutd::{Shortcut, ShortcutClient};
 use std::error::Error;
 use std::time::Duration;
 
