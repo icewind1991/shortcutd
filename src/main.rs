@@ -77,7 +77,7 @@ fn main() -> Result<(), MainError> {
 
     let rx = listener.listen(device);
 
-    let mut connection = LocalConnection::new_session()?;
+    let mut connection = LocalConnection::new_system()?;
     connection.request_name(INTERFACE, false, true, false)?;
 
     let mtree = Arc::new(MutateTree::new(Factory::new_fn::<()>(), ()));
