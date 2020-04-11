@@ -7,6 +7,7 @@ use std::fmt::{self, Display};
 use std::str::FromStr;
 use std::sync::mpsc::{channel, Receiver};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 mod keycodes;
 
@@ -219,6 +220,8 @@ impl ShortcutListener {
                             tx.send(shortcut.clone()).unwrap()
                         }
                     }
+                } else {
+                    std::thread::sleep(Duration::from_millis(10));
                 }
             }
         });
