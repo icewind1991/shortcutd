@@ -4,6 +4,14 @@ version = "0.1.0"
 authors = ["Robin Appelman <robin@icewind.nl>"]
 edition = "2018"
 
+[lib]
+name = "shortcutd_client"
+path = "src/lib.rs"
+
+[[bin]]
+name = "shortcutd_server"
+path = "src/server.rs"
+
 [dependencies]
 evdev = "0.10.1"
 main_error = "0.1.0"
