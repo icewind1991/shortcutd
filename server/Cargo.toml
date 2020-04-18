@@ -1,0 +1,18 @@
+[package]
+name = "shortcutd-server"
+version = "0.1.0"
+authors = ["Robin Appelman <robin@icewind.nl>"]
+edition = "2018"
+
+[[bin]]
+name = "shortcutd"
+path = "src/server.rs"
+
+[dependencies]
+main_error = "0.1.0"
+dbus = { version = "0.8.2", path = "../../dbus-rs/dbus" }
+glob = "0.3.0"
+evdev-shortcut = { version = "0.1", path = "../../evdev-shortcut" }
+
+[dev-dependencies]
+test-case = "1.0.0"

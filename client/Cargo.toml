@@ -1,0 +1,16 @@
+[package]
+name = "shortcutd"
+version = "0.1.0"
+authors = ["Robin Appelman <robin@icewind.nl>"]
+edition = "2018"
+
+[lib]
+name = "shortcutd"
+path = "src/lib.rs"
+
+[dependencies]
+dbus = { version = "0.8.2", path = "../../dbus-rs/dbus" }
+evdev-shortcut = { version = "0.1", path = "../../evdev-shortcut", default_features = false }
+
+[dev-dependencies]
+test-case = "1.0.0"
