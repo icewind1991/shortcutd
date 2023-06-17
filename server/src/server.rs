@@ -3,6 +3,7 @@ use evdev_shortcut::{Shortcut, ShortcutEvent, ShortcutListener, ShortcutState};
 use glob::GlobError;
 use std::path::PathBuf;
 use futures::stream::StreamExt;
+use tracing::info;
 use zbus::{ConnectionBuilder, dbus_interface, fdo, SignalContext, ObjectServer};
 use zbus::export::futures_util::pin_mut;
 
@@ -15,6 +16,7 @@ impl Register {
     async fn register(&mut self, shortcut: &str, #[zbus(object_server)] server: &ObjectServer) -> Result<String, fdo::Error> {
         match shortcut.parse::<Shortcut>() {
             Ok(shortcut) => {
+                info!(%shortcut, "registering shortcut");
                 self.listener.add(shortcut.clone());
                 let path = format!("/{}", shortcut.identifier());
                 if let Err(e) = server.at(path.as_str(), ShortcutSignal).await {

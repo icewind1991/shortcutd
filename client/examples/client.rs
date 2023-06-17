@@ -1,23 +1,24 @@
-use shortcutd::{Shortcut, ShortcutClient};
+use shortcutd::{ShortcutClient};
 use std::error::Error;
-use std::time::Duration;
+use futures::pin_mut;
+use futures::stream::iter;
+use futures::StreamExt;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut client = ShortcutClient::new()?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let client = ShortcutClient::new().await?;
 
-    let shortcut: Shortcut = "<Ctrl><Alt>-KeyP".parse()?;
+    let streams = [
+        Box::pin(client.register("<Ctrl>-KeyM".parse()?).await?),
+        Box::pin(client.register("<Ctrl><Alt>-KeyO".parse()?).await?),
+    ];
 
-    client.register(shortcut, |s| {
-        eprintln!("shortcut1 {}", s);
-    })?;
+    let stream = iter(streams).flatten_unordered(None);
 
-    let shortcut: Shortcut = "<Ctrl><Alt>-KeyO".parse()?;
+    pin_mut!(stream);
 
-    client.register(shortcut, |s| {
-        eprintln!("shortcut2 {}", s);
-    })?;
-
-    loop {
-        client.process(Duration::from_millis(1000))?;
+    while let Some(event) = stream.next().await {
+        println!("{} {}", event.shortcut, event.state.as_str());
     }
+    Ok(())
 }
