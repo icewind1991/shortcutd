@@ -1,5 +1,4 @@
-pub use evdev_shortcut::Shortcut;
-use evdev_shortcut::{ShortcutEvent, ShortcutState};
+pub use evdev_shortcut::{Key, Modifier, ModifierList, Shortcut, ShortcutEvent, ShortcutState};
 use futures::Stream;
 use futures::StreamExt;
 use zbus::dbus_proxy;

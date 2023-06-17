@@ -1,9 +1,8 @@
 use clap::Parser;
-use evdev_shortcut::Shortcut;
 use futures::pin_mut;
 use futures::stream::iter;
 use futures::StreamExt;
-use shortcutd::ShortcutClient;
+use shortcutd::{Shortcut, ShortcutClient};
 use std::error::Error;
 
 #[derive(Parser, Debug)]
