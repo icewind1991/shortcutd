@@ -1,19 +1,26 @@
-use shortcutd::{ShortcutClient};
-use std::error::Error;
+use clap::Parser;
+use evdev_shortcut::Shortcut;
 use futures::pin_mut;
 use futures::stream::iter;
 use futures::StreamExt;
+use shortcutd::ShortcutClient;
+use std::error::Error;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Shortcut to listen to
+    shortcuts: Vec<Shortcut>,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let args = Args::parse();
     let client = ShortcutClient::new().await?;
 
-    let streams = [
-        Box::pin(client.register("<Ctrl>-KeyM".parse()?).await?),
-        Box::pin(client.register("<Ctrl><Alt>-KeyO".parse()?).await?),
-    ];
-
-    let stream = iter(streams).flatten_unordered(None);
+    let stream = iter(args.shortcuts)
+        .then(|shortcut| async { Box::pin(client.listen(shortcut).await.unwrap()) })
+        .flatten_unordered(None);
 
     pin_mut!(stream);
 

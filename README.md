@@ -11,8 +11,7 @@ The shortcutd daemon hooks into the evdev system and exposes a dbus interface fo
 By separating out the code that hooks into evdev (which needs to be done as root) into a separate daemon
 it allows non-privileged users to hook into global shortcuts.
 
-Protection against clients using the shortcutd daemon for a keylogger is done by only allowing shortcuts that
-contain at least one modifier key.
+Protection against clients using the shortcutd daemon for a keylogger is done by only allowing 3 shortcuts without modifiers to be registered at the same time.
 
 ## Starting the daemon
 
@@ -22,33 +21,32 @@ contain at least one modifier key.
 ## Rust api
 
 ```rust
+use futures::{pin_mut, StreamExt};
 use shortcutd::{Shortcut, ShortcutClient};
 use std::error::Error;
-use std::time::Duration;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut client = ShortcutClient::new()?;
-
-    let shortcut: Shortcut = "<Ctrl><Alt>-KeyP".parse()?;
-
-    client.register(shortcut, |s| {
-        eprintln!("shortcut1 {}", s);
-    })?;
-
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let client = ShortcutClient::new().await?;
+  
     let shortcut: Shortcut = "<Ctrl><Alt>-KeyO".parse()?;
-
-    client.register(shortcut, |s| {
-        eprintln!("shortcut2 {}", s);
-    })?;
-
-    loop {
-        client.process(Duration::from_millis(1000))?;
+  
+    let stream = client.listen(shortcut).await?;
+  
+    pin_mut!(stream);
+  
+    while let Some(event) = stream.next().await {
+      println!("{} {}", event.shortcut, event.state.as_str());
     }
+    Ok(())
 }
+
 ```
 
 ## D-Bus api
 
 - register a new shortcut using the `Register` method at `nl.icewind.shortcutd`/`register`
-- listen to the signal at the path returned from the `Register` method to get notified when the shortcut is triggered
+- listen to the signal at the path returned from the `Register` method to get notified when the shortcut is triggered.
+  
+  A boolean parameter is provided with the signal to distinguish shortcut presses from releases.
 

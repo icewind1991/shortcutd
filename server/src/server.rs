@@ -1,21 +1,38 @@
-use main_error::MainError;
 use evdev_shortcut::{Shortcut, ShortcutEvent, ShortcutListener, ShortcutState};
-use glob::GlobError;
-use std::path::PathBuf;
 use futures::stream::StreamExt;
+use glob::GlobError;
+use main_error::MainError;
+use std::path::PathBuf;
 use tracing::info;
-use zbus::{ConnectionBuilder, dbus_interface, fdo, SignalContext, ObjectServer};
 use zbus::export::futures_util::pin_mut;
+use zbus::{dbus_interface, fdo, ConnectionBuilder, ObjectServer, SignalContext};
 
 struct Register {
     listener: ShortcutListener,
+    bare_count: usize,
 }
+
+const MAX_BARE: usize = 3;
 
 #[dbus_interface(name = "nl.icewind.shortcutd")]
 impl Register {
-    async fn register(&mut self, shortcut: &str, #[zbus(object_server)] server: &ObjectServer) -> Result<String, fdo::Error> {
+    async fn register(
+        &mut self,
+        shortcut: &str,
+        #[zbus(object_server)] server: &ObjectServer,
+    ) -> Result<String, fdo::Error> {
         match shortcut.parse::<Shortcut>() {
             Ok(shortcut) => {
+                if shortcut.modifiers.is_empty() && !self.listener.has(&shortcut) {
+                    dbg!(&shortcut);
+                    if self.bare_count >= MAX_BARE {
+                        return Err(fdo::Error::InvalidArgs(format!(
+                            "Only {} shortcuts without modifiers are allowed",
+                            MAX_BARE
+                        )));
+                    }
+                    self.bare_count += 1;
+                }
                 info!(%shortcut, "registering shortcut");
                 self.listener.add(shortcut.clone());
                 let path = format!("/{}", shortcut.identifier());
@@ -49,6 +66,7 @@ async fn main() -> Result<(), MainError> {
 
     let bus = Register {
         listener,
+        bare_count: 0,
     };
     let conn = ConnectionBuilder::system()?
         .name("nl.icewind.shortcutd")?
@@ -63,7 +81,12 @@ async fn main() -> Result<(), MainError> {
         let event: ShortcutEvent = event;
         let identifier = format!("/{}", event.shortcut.identifier());
         if let Ok(signal_interface) = server.interface::<_, ShortcutSignal>(identifier).await {
-            if let Err(e) = ShortcutSignal::triggered(signal_interface.signal_context(), event.state == ShortcutState::Pressed).await {
+            if let Err(e) = ShortcutSignal::triggered(
+                signal_interface.signal_context(),
+                event.state == ShortcutState::Pressed,
+            )
+            .await
+            {
                 eprintln!("{e:#}");
             }
         }

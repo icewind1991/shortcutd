@@ -11,8 +11,9 @@ path = "src/lib.rs"
 [dependencies]
 futures = "0.3.28"
 zbus = { version = "3.13.1", features = ["tokio"], default-features = false }
-evdev-shortcut = { version = "0.1.1", default_features = false }
+evdev-shortcut = { version = "0.1.2", default_features = false }
 
 [dev-dependencies]
 test-case = "3.1.0"
 tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
+clap = { version = "4.3.4", features = ["derive"] }

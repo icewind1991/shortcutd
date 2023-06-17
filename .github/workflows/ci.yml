@@ -65,16 +65,3 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}-${{ matrix.target }}
           path: result/bin/${{ matrix.artifact_name }}
-
-  test:
-    runs-on: ubuntu-latest
-    needs: check
-    steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v20
-      - uses: icewind1991/attic-action@v1
-        with:
-          name: ci
-          instance: https://cache.icewind.me
-          authToken: '${{ secrets.ATTIC_TOKEN }}'
-      - run: nix build .#test

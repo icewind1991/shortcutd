@@ -1,23 +1,22 @@
 pub use evdev_shortcut::Shortcut;
 use evdev_shortcut::{ShortcutEvent, ShortcutState};
 use futures::Stream;
-use zbus::{Connection, fdo};
-use zbus::dbus_proxy;
 use futures::StreamExt;
+use zbus::dbus_proxy;
+use zbus::{fdo, Connection};
 
 #[dbus_proxy(
-interface = "nl.icewind.shortcutd",
-default_service = "nl.icewind.shortcutd",
-default_path = "/register"
+    interface = "nl.icewind.shortcutd",
+    default_service = "nl.icewind.shortcutd",
+    default_path = "/register"
 )]
 trait Register {
     async fn register(&self, shortcut: &str) -> fdo::Result<String>;
 }
 
-
 #[dbus_proxy(
-interface = "nl.icewind.shortcutd",
-default_service = "nl.icewind.shortcutd"
+    interface = "nl.icewind.shortcutd",
+    default_service = "nl.icewind.shortcutd"
 )]
 trait ShortcutSignal {
     #[dbus_proxy(signal)]
@@ -39,14 +38,17 @@ impl ShortcutClient {
         ShortcutClient { connection }
     }
 
-    pub async fn register(
+    pub async fn listen(
         &self,
         shortcut: Shortcut,
-    ) -> Result<impl Stream<Item=ShortcutEvent> + '_, zbus::Error> {
+    ) -> Result<impl Stream<Item = ShortcutEvent> + '_, zbus::Error> {
         let register = RegisterProxy::new(&self.connection).await?;
         let path = register.register(&format!("{}", shortcut)).await?;
 
-        let p = ShortcutSignalProxy::builder(&self.connection).path(path.as_str())?.build().await?;
+        let p = ShortcutSignalProxy::builder(&self.connection)
+            .path(path.as_str())?
+            .build()
+            .await?;
         let signals = p.receive_triggered().await?;
 
         Ok(signals.filter_map(move |signal| {
@@ -55,7 +57,11 @@ impl ShortcutClient {
                 let pressed = signal.args().ok()?.pressed;
                 Some(ShortcutEvent {
                     shortcut,
-                    state: if pressed { ShortcutState::Pressed } else { ShortcutState::Released },
+                    state: if pressed {
+                        ShortcutState::Pressed
+                    } else {
+                        ShortcutState::Released
+                    },
                 })
             }
         }))
