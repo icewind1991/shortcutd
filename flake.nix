@@ -21,7 +21,7 @@
     ...
   }:
     flake-utils.lib.eachDefaultSystem (system: let
-      overlays = [ (import rust-overlay) ];
+      overlays = [(import rust-overlay)];
       pkgs = (import nixpkgs) {
         inherit system overlays;
       };
@@ -38,7 +38,7 @@
 
       releaseTargets = lib.lists.remove hostTarget targets;
 
-      toolchain = (pkgs.rust-bin.stable.latest.default.override { inherit targets; });
+      toolchain = pkgs.rust-bin.stable.latest.default.override {inherit targets;};
       assetNameForTarget = replaceStrings ["-unknown" "-gnu" "-musl" "eabihf" "-pc"] ["" "" "" "" ""];
 
       cross-naersk' = pkgs.callPackage cross-naersk {inherit naersk;};
@@ -49,42 +49,58 @@
       };
 
       buildMatrix = targets: {
-        include = (map (target: {
-          inherit target;
-          artifact_name = "shortcutd";
-          asset_name = "shortcutd-${assetNameForTarget target}";
-        }) targets ++ map (target: {
-          target = "${target}-example-client";
-          artifact_name = "client";
-          asset_name = "example-client-${assetNameForTarget target}";
-        }) targets);
+        include =
+          map (target: {
+            inherit target;
+            artifact_name = "shortcutd";
+            asset_name = "shortcutd-${assetNameForTarget target}";
+          })
+          targets
+          ++ map (target: {
+            target = "${target}-example-client";
+            artifact_name = "client";
+            asset_name = "example-client-${assetNameForTarget target}";
+          })
+          targets;
       };
-      serverPackages = genAttrs targets (target: (cross-naersk' target).buildPackage ({
-        pname = "shortcutd";
-        root = src;
-      }));
-      clientPackages = listToAttrs (map (target: nameValuePair "${target}-example-client" ((cross-naersk' target).buildPackage ({
-        pname = "shortcutd-example-client";
-        root = src;
-
-        overrideMain = x: {
-            preConfigure = ''
-            cargo_build_options="$cargo_build_options --example client"
+      serverPackages = genAttrs targets (target:
+        (cross-naersk' target).buildPackage {
+          pname = "shortcutd";
+          root = src;
+          postInstall = ''
+            mkdir -p $out/etc/dbus-1/system.d/
+            cp ${./nixos-nl.icewind.shortcutd.conf} $out/etc/dbus-1/system.d/nl.icewind.shortcutd.conf
           '';
-        };
-      }))) targets);
+        });
+      clientPackages = listToAttrs (map (target:
+        nameValuePair "${target}-example-client" ((cross-naersk' target).buildPackage {
+          pname = "shortcutd-example-client";
+          root = src;
+
+          overrideMain = x: {
+            preConfigure = ''
+              cargo_build_options="$cargo_build_options --example client"
+            '';
+          };
+        }))
+      targets);
     in rec {
-      packages = serverPackages // clientPackages // rec {
-        shortcutd = packages.${hostTarget};
-        example-client = packages."${hostTarget}-example-client";
-        check = (cross-naersk' hostTarget).buildPackage (naerskOpt // {
-          mode = "check";
-        });
-        clippy = (cross-naersk' hostTarget).buildPackage (naerskOpt // {
-          mode = "clippy";
-        });
-        default = shortcutd;
-      };
+      packages =
+        serverPackages
+        // clientPackages
+        // rec {
+          shortcutd = packages.${hostTarget};
+          example-client = packages."${hostTarget}-example-client";
+          check = (cross-naersk' hostTarget).buildPackage (naerskOpt
+            // {
+              mode = "check";
+            });
+          clippy = (cross-naersk' hostTarget).buildPackage (naerskOpt
+            // {
+              mode = "clippy";
+            });
+          default = shortcutd;
+        };
 
       inherit targets;
       inherit releaseTargets;
@@ -102,5 +118,76 @@
       devShells.default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [rust-bin.stable.latest.default bacon cargo-edit cargo-outdated rustfmt clippy cargo-audit hyperfine valgrind];
       };
-    });
+    })
+    // {
+      nixosModule = {
+        config,
+        lib,
+        pkgs,
+        ...
+      }:
+        with lib; let
+          cfg = config.services.shortcutd;
+        in {
+          options.services.shortcutd = {
+            enable = mkEnableOption "Enables the shortcutd service";
+
+            log = mkOption rec {
+              type = types.str;
+              default = "WARN";
+              example = "INFO";
+              description = "log level";
+            };
+          };
+
+          config = mkIf cfg.enable {
+            services.dbus.packages = [self.packages.${pkgs.system}.default];
+
+            users.users.shortcutd = {
+              isSystemUser = true;
+              group = "shortcutd";
+            };
+            users.groups.shortcutd = {};
+
+            systemd.services."shortcutd" = {
+              wantedBy = ["multi-user.target"];
+
+              environment = {
+                RUST_LOG = cfg.log;
+              };
+
+              serviceConfig = let
+                pkg = self.packages.${pkgs.system}.default;
+              in {
+                User = "shortcutd";
+                Restart = "on-failure";
+                ExecStart = "${pkg}/bin/shortcutd";
+                PrivateTmp = true;
+                ProtectSystem = "strict";
+                ProtectHome = true;
+                NoNewPrivileges = true;
+                CapabilityBoundingSet = true;
+                ProtectKernelLogs = true;
+                ProtectControlGroups = true;
+                SystemCallArchitectures = "native";
+                ProtectKernelModules = true;
+                RestrictNamespaces = true;
+                MemoryDenyWriteExecute = true;
+                ProtectHostname = true;
+                LockPersonality = true;
+                ProtectKernelTunables = true;
+                RestrictRealtime = true;
+                SystemCallFilter = ["@system-service" "~@resources" "~@privileged"];
+                RestrictAddressFamilies = ["AF_UNIX"];
+                IPAddressDeny = "any";
+                PrivateUsers = true;
+                RestrictSUIDSGID = true;
+                PrivateNetwork = true;
+                UMask = "0077";
+                SupplementaryGroups = ["input"];
+              };
+            };
+          };
+        };
+    };
 }

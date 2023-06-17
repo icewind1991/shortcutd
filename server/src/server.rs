@@ -3,7 +3,7 @@ use futures::stream::StreamExt;
 use glob::GlobError;
 use main_error::MainError;
 use std::path::PathBuf;
-use tracing::info;
+use tracing::{error, info};
 use zbus::export::futures_util::pin_mut;
 use zbus::{dbus_interface, fdo, ConnectionBuilder, ObjectServer, SignalContext};
 
@@ -24,7 +24,6 @@ impl Register {
         match shortcut.parse::<Shortcut>() {
             Ok(shortcut) => {
                 if shortcut.modifiers.is_empty() && !self.listener.has(&shortcut) {
-                    dbg!(&shortcut);
                     if self.bare_count >= MAX_BARE {
                         return Err(fdo::Error::InvalidArgs(format!(
                             "Only {} shortcuts without modifiers are allowed",
@@ -68,11 +67,19 @@ async fn main() -> Result<(), MainError> {
         listener,
         bare_count: 0,
     };
-    let conn = ConnectionBuilder::system()?
+    let conn = ConnectionBuilder::system()
+        .map_err(|e| {
+            error!(error = ?e, "error while connecting to dbus system socket");
+            e
+        })?
         .name("nl.icewind.shortcutd")?
         .serve_at("/register", bus)?
         .build()
-        .await?;
+        .await
+        .map_err(|e| {
+            error!(error = ?e, "error while binding dbus service");
+            e
+        })?;
 
     let server = conn.object_server();
 
