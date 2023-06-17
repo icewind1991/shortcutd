@@ -2,7 +2,10 @@
 name = "shortcutd-server"
 version = "0.1.0"
 authors = ["Robin Appelman <robin@icewind.nl>"]
-edition = "2018"
+edition = "2021"
+description = "shortcutd server"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/icewind1991/shortcutd"
 
 [[bin]]
 name = "shortcutd"
