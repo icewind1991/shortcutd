@@ -9,8 +9,8 @@ name = "shortcutd"
 path = "src/lib.rs"
 
 [dependencies]
-dbus = { version = "0.8.2", path = "../../dbus-rs/dbus" }
-evdev-shortcut = { version = "0.1", path = "../../evdev-shortcut", default_features = false }
+dbus = { version = "0.8.4" }
+evdev-shortcut = { version = "0.1.1", default_features = false }
 
 [dev-dependencies]
-test-case = "1.0.0"
+test-case = "3.1.0"

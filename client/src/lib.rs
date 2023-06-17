@@ -1,6 +1,6 @@
 use dbus::arg;
 use dbus::blocking;
-use evdev_shortcut::Shortcut;
+pub use evdev_shortcut::Shortcut;
 
 const INTERFACE: &'static str = "nl.icewind.shortcutd";
 
