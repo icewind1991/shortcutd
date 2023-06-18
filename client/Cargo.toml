@@ -1,11 +1,12 @@
 [package]
 name = "shortcutd"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Robin Appelman <robin@icewind.nl>"]
 edition = "2021"
 description = "shortcutd client library"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/icewind1991/shortcutd"
+readme = "../README.md"
 
 [lib]
 name = "shortcutd"
@@ -14,7 +15,7 @@ path = "src/lib.rs"
 [dependencies]
 futures = "0.3.28"
 zbus = { version = "3.13.1", features = ["tokio"], default-features = false }
-evdev-shortcut = { version = "0.1.2", default_features = false }
+evdev-shortcut = { version = "0.1.4", default_features = false }
 
 [dev-dependencies]
 test-case = "3.1.0"

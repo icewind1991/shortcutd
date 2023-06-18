@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     pin_mut!(stream);
 
     while let Some(event) = stream.next().await {
-        println!("{} {}", event.shortcut, event.state.as_str());
+        println!("{} {}", event.shortcut, event.state);
     }
     Ok(())
 }

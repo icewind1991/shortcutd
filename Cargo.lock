@@ -421,9 +421,9 @@ dependencies = [
 
 [[package]]
 name = "evdev-shortcut"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb870dc02f8a7955fa4ff451bbdd8bf9362d71b245a76bbe73a4c000cf012709"
+checksum = "2b4f39c22648d85b48414b5fe5be7b1c392a4c67b9da4c167030878ed06bc1cf"
 dependencies = [
  "async-stream",
  "evdev",
@@ -1070,7 +1070,7 @@ dependencies = [
 
 [[package]]
 name = "shortcutd"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "evdev-shortcut",
